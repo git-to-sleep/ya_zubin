@@ -3,237 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Botball HQ</title>
+    <title>Botball HQ Terminal</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background-color: #313338; color: #dbdee1; font-family: sans-serif; }
+        body {
+            background-color: #0b0c10;
+            color: #c5c6c7;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0c10; }
+        ::-webkit-scrollbar-thumb { background: #1f2833; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #45f3ff; }
     </style>
 </head>
-<body class="h-screen flex flex-col justify-between m-0">
+<body>
 
-    <div id="auth-screen" class="flex flex-col items-center justify-center flex-grow p-4">
-        <div class="bg-[#1e1f22] p-8 rounded-lg shadow-xl w-full max-w-sm border border-[#2b2d31]">
-            <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-white">Welcome Back!</h2>
-            
-            <div class="mb-4">
-                <label class="block text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-2">Email Address</label>
-                <input type="email" id="email" class="w-full p-2.5 bg-[#1e1f22] border border-[#2b2d31] rounded text-white focus:outline-none focus:border-[#5865f2]">
-            </div>
-            
-            <div class="mb-6">
-                <label class="block text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-2">Password</label>
-                <input type="password" id="password" class="w-full p-2.5 bg-[#1e1f22] border border-[#2b2d31] rounded text-white focus:outline-none focus:border-[#5865f2]">
-            </div>
-            
-            <button id="primary-auth-btn" onclick="handleAuth()" class="w-full bg-[#5865f2] text-white p-2.5 rounded font-medium hover:bg-[#4752c4] transition-colors cursor-pointer">Log In</button>
-            
-            <p class="text-xs text-[#b5bac1] mt-4 text-center">
-                <span id="toggle-text">Need an account?</span> 
-                <button onclick="toggleAuthMode()" id="toggle-link" class="text-[#5865f2] hover:underline cursor-pointer ml-1">Register</button>
-            </p>
-        </div>
-    </div>
+    <div id="root"></div>
 
-    <div id="chat-screen" class="hidden flex flex-col h-full w-full max-w-4xl mx-auto bg-[#313338]">
-        <header class="bg-[#313338] border-b border-[#1f2023] p-4 flex justify-between items-center shadow-sm">
-            <h1 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="text-[#23a55a]">🤖</span> botball-hq
-            </h1>
-            <div class="flex items-center gap-2">
-                <button id="noti-btn" onclick="requestNotificationPermission()" class="text-xs text-white bg-[#23a55a] px-3 py-1.5 rounded transition-colors cursor-pointer hover:bg-[#1a7f43]">🔔 Enable Notifs</button>
-                <button onclick="logout()" class="text-xs text-[#b5bac1] hover:text-white bg-[#2b2d31] px-3 py-1.5 rounded transition-colors cursor-pointer">Log Out</button>
-            </div>
-        </header>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { motion, AnimatePresence } = Motion;
 
-        <main id="chat-box" class="flex-grow p-6 overflow-y-auto space-y-4 flex flex-col justify-end">
-            </main>
-
-        <footer class="p-4 bg-[#313338]">
-            <form id="message-form" onsubmit="sendMessage(event)" class="flex items-center bg-[#383a40] rounded-lg px-4 py-2.5">
-                <input type="text" id="message-input" autocomplete="off" placeholder="Message Botball HQ..." class="flex-grow bg-transparent text-white focus:outline-none placeholder-[#80848e]">
-            </form>
-        </footer>
-    </div>
-
-    <script>
         // ======= CONFIGURATION PANEL =======
-        // 1. Fill these in using your Supabase Dashboard (Settings -> API)
         const SUPABASE_URL = "https://jhxhootjwtnrevlyilwi.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_uJQccdNtbekmvt5xtv6dbA_D0DujBGZ";
 
-        // 2. Only allow registration if the email matches this whitelist exactly.
+        // Whitelist security system applied inside the code logic
         const ALLOWED_USERS = [
-            "rishabh.bhatia248@gmail.com",
-            "zrsikchi@gmail.com"
+            "rishabh.batia248@gmail.com",
+            "yourfriend@gmail.com"
         ];
-        // ==========================================
+        // ===================================
 
-        // Fixed variable name from 'supabase' to 'db' to prevent browser errors
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        let currentUser = null;
-        let isLoginMode = true;
 
-        window.onload = async () => {
-            const { data: { session } } = await db.auth.getSession();
-            if (session) {
-                setupChat(session.user);
-            }
-            if (Notification.permission === "granted") {
-                document.getElementById('noti-btn').classList.add('hidden');
-            }
-        };
+        function App() {
+            const [user, setUser] = useState(null);
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [isLogin, setIsLogin] = useState(true);
+            const [messages, setMessages] = useState([]);
+            const [text, setText] = useState("");
+            const chatEndRef = useRef(null);
 
-        async function requestNotificationPermission() {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                alert("Notifications activated!");
-                document.getElementById('noti-btn').classList.add('hidden');
-            }
-        }
-
-        function toggleAuthMode() {
-            isLoginMode = !isLoginMode;
-            const title = document.getElementById('auth-title');
-            const btn = document.getElementById('primary-auth-btn');
-            const toggleText = document.getElementById('toggle-text');
-            const toggleLink = document.getElementById('toggle-link');
-
-            if (isLoginMode) {
-                title.innerText = "Welcome Back!";
-                btn.innerText = "Log In";
-                toggleText.innerText = "Need an account?";
-                toggleLink.innerText = "Register";
-            } else {
-                title.innerText = "Create an Account";
-                btn.innerText = "Sign Up";
-                toggleText.innerText = "Already have an account?";
-                toggleLink.innerText = "Log In";
-            }
-        }
-
-        async function handleAuth() {
-            const email = document.getElementById('email').value.trim().toLowerCase();
-            const password = document.getElementById('password').value;
-
-            if (!email || !password) {
-                alert("Please fill in all blanks.");
-                return;
-            }
-
-            if (isLoginMode) {
-                const { data, error } = await db.auth.signInWithPassword({ email, password });
-                if (error) {
-                    alert("Login failed. Check your credentials or wait for admin approval: " + error.message);
-                } else {
-                    setupChat(data.user);
-                }
-            } else {
-                // Safeguard whitelist check
-                if (!ALLOWED_USERS.includes(email)) {
-                    alert("Access Denied: This app is fully closed to the public.");
-                    return;
-                }
-
-                // Register user with metadata set to false
-                const { data, error } = await db.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: { data: { approved: false } }
+            useEffect(() => {
+                db.auth.getSession().then(({ data: { session } }) => {
+                    if (session) setUser(session.user);
                 });
 
-                if (error) {
-                    alert("Registration failed: " + error.message);
-                } else {
-                    alert("Account registered! Step 1: Check your inbox to verify your email. Step 2: Inform the administrator to manually unlock your profile access.");
-                    toggleAuthMode();
+                const { data: { subscription } } = db.auth.onAuthStateChange((_event, session) => {
+                    setUser(session ? session.user : null);
+                });
+
+                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
                 }
-            }
-        }
 
-        function setupChat(user) {
-            currentUser = user;
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('chat-screen').classList.remove('hidden');
-            
-            loadExistingMessages();
-            listenToLiveMessages();
-        }
+                return () => subscription.unsubscribe();
+            }, []);
 
-        async function loadExistingMessages() {
-            const { data: messages, error } = await db
-                .from('messages')
-                .select('*')
-                .order('created_at', { ascending: true })
-                .limit(50);
+            useEffect(() => {
+                if (user) {
+                    loadMessages();
+                    const channel = db
+                        .channel('live-chat')
+                        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                            setMessages(prev => [...prev, payload.new]);
+                            triggerSystemNotification(payload.new);
+                        })
+                        .subscribe();
 
-            if (error) {
-                console.error("Data load restriction (Unapproved account):", error.message);
-                return;
-            }
+                    return () => db.removeChannel(channel);
+                }
+            }, [user]);
 
-            if (messages) {
-                const chatBox = document.getElementById('chat-box');
-                chatBox.innerHTML = '';
-                messages.forEach(msg => displayMessage(msg, false));
-            }
-        }
+            useEffect(() => {
+                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages]);
 
-        function listenToLiveMessages() {
-            db
-                .channel('room1')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                    displayMessage(payload.new, true);
-                })
-                .subscribe();
-        }
+            const loadMessages = async () => {
+                const { data, error } = await db.from('messages').select('*').order('created_at', { ascending: true }).limit(50);
+                if (!error && data) setMessages(data);
+            };
 
-        async function sendMessage(event) {
-            event.preventDefault();
-            const input = document.getElementById('message-input');
-            const messageText = input.value.trim();
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                const cleanEmail = email.trim().toLowerCase();
+                if (!cleanEmail || !password) return;
 
-            if (messageText === '') return;
-            input.value = ''; 
+                if (isLogin) {
+                    const { error } = await db.auth.signInWithPassword({ email: cleanEmail, password });
+                    if (error) alert("Access Denied: " + error.message);
+                } else {
+                    // Stop signup instantly if email isn't on your whitelist
+                    if (!ALLOWED_USERS.includes(cleanEmail)) {
+                        alert("Access Denied: You are not authorized on the Botball grid network.");
+                        return;
+                    }
 
-            const { error } = await db
-                .from('messages')
-                .insert([{ 
-                    sender: currentUser.email.split('@')[0], 
-                    content: messageText 
+                    const { error } = await db.auth.signUp({ email: cleanEmail, password });
+                    if (error) alert("Registration Blocked: " + error.message);
+                    else alert("Verification baseline transmitted. Check your Gmail inbox to activate your node!");
+                }
+            };
+
+            const sendMessage = async (e) => {
+                e.preventDefault();
+                if (!text.trim()) return;
+                const messageContent = text;
+                setText("");
+
+                const { error } = await db.from('messages').insert([{
+                    sender: user.email.split('@')[0],
+                    content: messageContent
                 }]);
+                if (error) alert("Transmission failed. Confirm database RLS settings match whitelist.");
+            };
 
-            if (error) alert("Could not send message. Are you approved yet?");
-        }
+            const triggerSystemNotification = (msg) => {
+                const senderName = user.email.split('@')[0];
+                if (msg.sender !== senderName && document.hidden && Notification.permission === "granted") {
+                    new Notification(`🤖 Botball Data Link [${msg.sender}]`, { body: msg.content });
+                }
+            };
 
-        function displayMessage(msg, triggerNotification) {
-            const chatBox = document.getElementById('chat-box');
-            const messageElement = document.createElement('div');
-            messageElement.className = "flex flex-col border-b border-[#35373c] pb-2";
+            return (
+                <div class="h-screen w-screen flex items-center justify-center p-4 bg-[#0b0c10] relative">
+                    <div class="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#45f3ff_1px,transparent_0)] bg-[size:20px_20px]"></div>
 
-            const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    <AnimatePresence mode="wait">
+                        {!user ? (
+                            /* ANIMATED LOGIN LAYER */
+                            <motion.div 
+                                key="auth"
+                                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -40, scale: 0.95 }}
+                                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                                class="bg-[#1f2833]/40 backdrop-blur-md p-8 rounded-xl border border-[#45f3ff]/20 shadow-[0_0_30px_rgba(69,243,255,0.05)] w-full max-w-sm relative overflow-hidden"
+                            >
+                                <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#45f3ff] to-transparent"></div>
+                                
+                                <h2 class="text-xl font-bold tracking-widest text-center text-white mb-6 uppercase">
+                                    {isLogin ? "// SECURE_LOGIN" : "// CREATE_NODE"}
+                                </h2>
 
-            messageElement.innerHTML = `
-                <div class="flex items-baseline gap-2">
-                    <span class="font-semibold text-white">${msg.sender}</span>
-                    <span class="text-[10px] text-[#949ba4]">${time}</span>
+                                <form onSubmit={handleAuth} class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] uppercase tracking-widest text-[#66fcf1] mb-1">Operator ID (Email)</label>
+                                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} class="w-full p-2.5 bg-[#0b0c10]/80 border border-[#1f2833] rounded text-white focus:outline-none focus:border-[#45f3ff] text-sm font-mono tracking-wide transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] uppercase tracking-widest text-[#66fcf1] mb-1">Access Key (Password)</label>
+                                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} class="w-full p-2.5 bg-[#0b0c10]/80 border border-[#1f2833] rounded text-white focus:outline-none focus:border-[#45f3ff] text-sm transition-colors" />
+                                    </div>
+                                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" class="w-full bg-gradient-to-r from-[#1f2833] to-[#45f3ff]/20 text-[#45f3ff] border border-[#45f3ff]/40 p-2.5 rounded text-xs uppercase font-bold tracking-widest hover:bg-[#45f3ff]/20 transition-all cursor-pointer shadow-[0_0_15px_rgba(69,243,255,0.1)]">
+                                        {isLogin ? "Initialize Session" : "Deploy Credentials"}
+                                    </motion.button>
+                                </form>
+                                <p class="text-[10px] text-[#c5c6c7] mt-4 text-center tracking-wider">
+                                    {isLogin ? "Awaiting system handshake... " : "Existing profile detected? "}
+                                    <button onClick={() => setIsLogin(!isLogin)} class="text-[#45f3ff] underline cursor-pointer bg-transparent border-none">
+                                        {isLogin ? "Register Node" : "Return to Login"}
+                                    </button>
+                                </p>
+                            </motion.div>
+                        ) : (
+                            /* ANIMATED CHAT LAYER */
+                            <motion.div 
+                                key="chat"
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.98 }}
+                                transition={{ duration: 0.5 }}
+                                class="w-full max-w-4xl h-[85vh] flex flex-col bg-[#1f2833]/10 backdrop-blur-lg border border-[#45f3ff]/10 rounded-xl overflow-hidden shadow-[0_0_50px_rgba(11,12,16,0.8)]"
+                            >
+                                <header class="p-4 bg-[#0b0c10]/90 border-b border-[#1f2833] flex justify-between items-center z-10">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-2 h-2 rounded-full bg-[#45f3ff] animate-pulse shadow-[0_0_8px_#45f3ff]"></span>
+                                        <h1 class="text-sm font-bold uppercase tracking-widest text-white flex items-center gap-2">
+                                            botball_network://<span class="text-[#45f3ff]">hq-terminal</span>
+                                        </h1>
+                                    </div>
+                                    <button onClick={() => db.auth.signOut()} class="text-[10px] text-[#c5c6c7] hover:text-[#ff4545] border border-[#1f2833] hover:border-[#ff4545]/40 px-3 py-1 rounded tracking-widest transition-all cursor-pointer uppercase bg-transparent">
+                                        Disconnect
+                                    </button>
+                                </header>
+
+                                <main class="flex-grow p-6 overflow-y-auto space-y-4 bg-[#0b0c10]/40">
+                                    <AnimatePresence initial={false}>
+                                        {messages.map((msg) => (
+                                            <motion.div 
+                                                key={msg.id}
+                                                initial={{ opacity: 0, x: -10, y: 5 }}
+                                                animate={{ opacity: 1, x: 0, y: 0 }}
+                                                transition={{ duration: 0.25, ease: "easeOut" }}
+                                                class="flex flex-col border-l-2 border-[#1f2833] pl-3 py-0.5 hover:border-[#45f3ff]/40 transition-colors"
+                                            >
+                                                <div class="flex items-baseline gap-2">
+                                                    <span class="text-xs font-bold text-[#45f3ff] tracking-wide">&lt;{msg.sender}&gt;</span>
+                                                    <span class="text-[9px] text-[#1f2833] font-mono">
+                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                                <div class="text-sm text-[#c5c6c7] mt-1 tracking-wide font-mono break-all">{msg.content}</div>
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                    <div ref={chatEndRef} />
+                                </main>
+
+                                <footer class="p-4 bg-[#0b0c10]/90 border-t border-[#1f2833]">
+                                    <form onSubmit={sendMessage} class="flex items-center bg-[#0b0c10] border border-[#1f2833] focus-within:border-[#45f3ff] rounded px-3 py-2 transition-colors">
+                                        <span class="text-[#45f3ff] text-xs font-mono mr-2">&gt;&gt;</span>
+                                        <input 
+                                            type="text" 
+                                            value={text} 
+                                            onChange={e => setText(e.target.value)}
+                                            placeholder="Awaiting command input..." 
+                                            class="flex-grow bg-transparent text-white focus:outline-none placeholder-[#1f2833] text-sm font-mono tracking-wide"
+                                            autoComplete="off"
+                                        />
+                                    </form>
+                                </footer>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-                <div class="text-[#dbdee1] mt-0.5 text-sm break-all">${msg.content}</div>
-            `;
-            
-            chatBox.appendChild(messageElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            const userScreenName = currentUser.email.split('@')[0];
-            if (triggerNotification && msg.sender !== userScreenName && document.hidden && Notification.permission === "granted") {
-                new Notification(`New message from ${msg.sender}`, { body: msg.content });
-            }
+            );
         }
 
-        async function logout() {
-            await db.auth.signOut();
-            window.location.reload();
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
