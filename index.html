@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Private Chat Hub</title>
+    <title>Botball HQ</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -38,7 +38,7 @@
     <div id="chat-screen" class="hidden flex flex-col h-full w-full max-w-4xl mx-auto bg-[#313338]">
         <header class="bg-[#313338] border-b border-[#1f2023] p-4 flex justify-between items-center shadow-sm">
             <h1 class="text-lg font-bold text-white flex items-center gap-2">
-                <span class="text-[#80848e]">#</span> private-lounge
+                <span class="text-[#23a55a]">🤖</span> botball-hq
             </h1>
             <div class="flex items-center gap-2">
                 <button id="noti-btn" onclick="requestNotificationPermission()" class="text-xs text-white bg-[#23a55a] px-3 py-1.5 rounded transition-colors cursor-pointer hover:bg-[#1a7f43]">🔔 Enable Notifs</button>
@@ -51,13 +51,13 @@
 
         <footer class="p-4 bg-[#313338]">
             <form id="message-form" onsubmit="sendMessage(event)" class="flex items-center bg-[#383a40] rounded-lg px-4 py-2.5">
-                <input type="text" id="message-input" autocomplete="off" placeholder="Message #private-lounge" class="flex-grow bg-transparent text-white focus:outline-none placeholder-[#80848e]">
+                <input type="text" id="message-input" autocomplete="off" placeholder="Message Botball HQ..." class="flex-grow bg-transparent text-white focus:outline-none placeholder-[#80848e]">
             </form>
         </footer>
     </div>
 
     <script>
-        // ======= CONFIGURATION CONFIG PANEL =======
+        // ======= CONFIGURATION PANEL =======
         // 1. Fill these in using your Supabase Dashboard (Settings -> API)
         const SUPABASE_URL = "https://jhxhootjwtnrevlyilwi.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_uJQccdNtbekmvt5xtv6dbA_D0DujBGZ";
@@ -69,12 +69,13 @@
         ];
         // ==========================================
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Fixed variable name from 'supabase' to 'db' to prevent browser errors
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let currentUser = null;
         let isLoginMode = true;
 
         window.onload = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await db.auth.getSession();
             if (session) {
                 setupChat(session.user);
             }
@@ -121,21 +122,21 @@
             }
 
             if (isLoginMode) {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                const { data, error } = await db.auth.signInWithPassword({ email, password });
                 if (error) {
                     alert("Login failed. Check your credentials or wait for admin approval: " + error.message);
                 } else {
                     setupChat(data.user);
                 }
             } else {
-                // Safeguard: Drop attempt if email isn't whitelisted
+                // Safeguard whitelist check
                 if (!ALLOWED_USERS.includes(email)) {
                     alert("Access Denied: This app is fully closed to the public.");
                     return;
                 }
 
-                // Register user with user_metadata set to approved: false
-                const { data, error } = await supabase.auth.signUp({
+                // Register user with metadata set to false
+                const { data, error } = await db.auth.signUp({
                     email: email,
                     password: password,
                     options: { data: { approved: false } }
@@ -160,7 +161,7 @@
         }
 
         async function loadExistingMessages() {
-            const { data: messages, error } = await supabase
+            const { data: messages, error } = await db
                 .from('messages')
                 .select('*')
                 .order('created_at', { ascending: true })
@@ -179,7 +180,7 @@
         }
 
         function listenToLiveMessages() {
-            supabase
+            db
                 .channel('room1')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
                     displayMessage(payload.new, true);
@@ -195,7 +196,7 @@
             if (messageText === '') return;
             input.value = ''; 
 
-            const { error } = await supabase
+            const { error } = await db
                 .from('messages')
                 .insert([{ 
                     sender: currentUser.email.split('@')[0], 
@@ -230,7 +231,7 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await db.auth.signOut();
             window.location.reload();
         }
     </script>
