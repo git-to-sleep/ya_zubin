@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private Chat Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #313338; color: #dbdee1; font-family: sans-serif; }
+    </style>
+</head>
+<body class="h-screen flex flex-col justify-between m-0">
+
+    <div id="auth-screen" class="flex flex-col items-center justify-center flex-grow p-4">
+        <div class="bg-[#1e1f22] p-8 rounded-lg shadow-xl w-full max-w-sm border border-[#2b2d31]">
+            <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-white">Welcome Back!</h2>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-2">Email Address</label>
+                <input type="email" id="email" class="w-full p-2.5 bg-[#1e1f22] border border-[#2b2d31] rounded text-white focus:outline-none focus:border-[#5865f2]">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold uppercase tracking-wide text-[#b5bac1] mb-2">Password</label>
+                <input type="password" id="password" class="w-full p-2.5 bg-[#1e1f22] border border-[#2b2d31] rounded text-white focus:outline-none focus:border-[#5865f2]">
+            </div>
+            
+            <button id="primary-auth-btn" onclick="handleAuth()" class="w-full bg-[#5865f2] text-white p-2.5 rounded font-medium hover:bg-[#4752c4] transition-colors cursor-pointer">Log In</button>
+            
+            <p class="text-xs text-[#b5bac1] mt-4 text-center">
+                <span id="toggle-text">Need an account?</span> 
+                <button onclick="toggleAuthMode()" id="toggle-link" class="text-[#5865f2] hover:underline cursor-pointer ml-1">Register</button>
+            </p>
+        </div>
+    </div>
+
+    <div id="chat-screen" class="hidden flex flex-col h-full w-full max-w-4xl mx-auto bg-[#313338]">
+        <header class="bg-[#313338] border-b border-[#1f2023] p-4 flex justify-between items-center shadow-sm">
+            <h1 class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="text-[#80848e]">#</span> private-lounge
+            </h1>
+            <div class="flex items-center gap-2">
+                <button id="noti-btn" onclick="requestNotificationPermission()" class="text-xs text-white bg-[#23a55a] px-3 py-1.5 rounded transition-colors cursor-pointer hover:bg-[#1a7f43]">🔔 Enable Notifs</button>
+                <button onclick="logout()" class="text-xs text-[#b5bac1] hover:text-white bg-[#2b2d31] px-3 py-1.5 rounded transition-colors cursor-pointer">Log Out</button>
+            </div>
+        </header>
+
+        <main id="chat-box" class="flex-grow p-6 overflow-y-auto space-y-4 flex flex-col justify-end">
+            </main>
+
+        <footer class="p-4 bg-[#313338]">
+            <form id="message-form" onsubmit="sendMessage(event)" class="flex items-center bg-[#383a40] rounded-lg px-4 py-2.5">
+                <input type="text" id="message-input" autocomplete="off" placeholder="Message #private-lounge" class="flex-grow bg-transparent text-white focus:outline-none placeholder-[#80848e]">
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        // ======= CONFIGURATION CONFIG PANEL =======
+        // 1. Fill these in using your Supabase Dashboard (Settings -> API)
+        const SUPABASE_URL = "https://jhxhootjwtnrevlyilwi.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_uJQccdNtbekmvt5xtv6dbA_D0DujBGZ";
+
+        // 2. Only allow registration if the email matches this whitelist exactly.
+        const ALLOWED_USERS = [
+            "rishabh.bhatia248@gmail.com",
+            "zrsikchi@gmail.com"
+        ];
+        // ==========================================
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+        let isLoginMode = true;
+
+        window.onload = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                setupChat(session.user);
+            }
+            if (Notification.permission === "granted") {
+                document.getElementById('noti-btn').classList.add('hidden');
+            }
+        };
+
+        async function requestNotificationPermission() {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                alert("Notifications activated!");
+                document.getElementById('noti-btn').classList.add('hidden');
+            }
+        }
+
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('auth-title');
+            const btn = document.getElementById('primary-auth-btn');
+            const toggleText = document.getElementById('toggle-text');
+            const toggleLink = document.getElementById('toggle-link');
+
+            if (isLoginMode) {
+                title.innerText = "Welcome Back!";
+                btn.innerText = "Log In";
+                toggleText.innerText = "Need an account?";
+                toggleLink.innerText = "Register";
+            } else {
+                title.innerText = "Create an Account";
+                btn.innerText = "Sign Up";
+                toggleText.innerText = "Already have an account?";
+                toggleLink.innerText = "Log In";
+            }
+        }
+
+        async function handleAuth() {
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                alert("Please fill in all blanks.");
+                return;
+            }
+
+            if (isLoginMode) {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    alert("Login failed. Check your credentials or wait for admin approval: " + error.message);
+                } else {
+                    setupChat(data.user);
+                }
+            } else {
+                // Safeguard: Drop attempt if email isn't whitelisted
+                if (!ALLOWED_USERS.includes(email)) {
+                    alert("Access Denied: This app is fully closed to the public.");
+                    return;
+                }
+
+                // Register user with user_metadata set to approved: false
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: { data: { approved: false } }
+                });
+
+                if (error) {
+                    alert("Registration failed: " + error.message);
+                } else {
+                    alert("Account registered! Step 1: Check your inbox to verify your email. Step 2: Inform the administrator to manually unlock your profile access.");
+                    toggleAuthMode();
+                }
+            }
+        }
+
+        function setupChat(user) {
+            currentUser = user;
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+            
+            loadExistingMessages();
+            listenToLiveMessages();
+        }
+
+        async function loadExistingMessages() {
+            const { data: messages, error } = await supabase
+                .from('messages')
+                .select('*')
+                .order('created_at', { ascending: true })
+                .limit(50);
+
+            if (error) {
+                console.error("Data load restriction (Unapproved account):", error.message);
+                return;
+            }
+
+            if (messages) {
+                const chatBox = document.getElementById('chat-box');
+                chatBox.innerHTML = '';
+                messages.forEach(msg => displayMessage(msg, false));
+            }
+        }
+
+        function listenToLiveMessages() {
+            supabase
+                .channel('room1')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                    displayMessage(payload.new, true);
+                })
+                .subscribe();
+        }
+
+        async function sendMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById('message-input');
+            const messageText = input.value.trim();
+
+            if (messageText === '') return;
+            input.value = ''; 
+
+            const { error } = await supabase
+                .from('messages')
+                .insert([{ 
+                    sender: currentUser.email.split('@')[0], 
+                    content: messageText 
+                }]);
+
+            if (error) alert("Could not send message. Are you approved yet?");
+        }
+
+        function displayMessage(msg, triggerNotification) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = document.createElement('div');
+            messageElement.className = "flex flex-col border-b border-[#35373c] pb-2";
+
+            const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            messageElement.innerHTML = `
+                <div class="flex items-baseline gap-2">
+                    <span class="font-semibold text-white">${msg.sender}</span>
+                    <span class="text-[10px] text-[#949ba4]">${time}</span>
+                </div>
+                <div class="text-[#dbdee1] mt-0.5 text-sm break-all">${msg.content}</div>
+            `;
+            
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const userScreenName = currentUser.email.split('@')[0];
+            if (triggerNotification && msg.sender !== userScreenName && document.hidden && Notification.permission === "granted") {
+                new Notification(`New message from ${msg.sender}`, { body: msg.content });
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
